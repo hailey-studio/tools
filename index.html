@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>奇奇的留学小工具</title>
+<meta name="description" content="两个免费的留学小工具：留学吞金兽算总花费和回本月数，死线航空倒推申请时间线。不用注册。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="奇奇的留学小工具">
+<meta property="og:description" content="留学吞金兽算花费，死线航空排死线。免费，不用注册。">
+<meta property="og:url" content="https://hailey-studio.github.io/tools/">
+<meta property="og:image" content="https://hailey-studio.github.io/tools/tunjinshou/share-card.png">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1440">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#FFD23F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 字体表不阻塞渲染：Google Fonts 打不开时页面先用系统字体，不会白屏 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=DotGothic16&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&family=DotGothic16&display=swap"></noscript>
+<style>
+:root{
+  --yellow:#FFD23F; --paper:#FDFDF8; --ink:#24262B; --fade:#5A5E66;
+  --sky:#62B4F4; --pass:#FCFDFE; --navy:#0F2341; --red:#D3302A;
+  --cjk:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC",sans-serif;
+  --disp:"ZCOOL KuaiLe",var(--cjk);
+  --num:"DotGothic16","Courier New",var(--cjk);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;color:var(--ink);font-family:var(--cjk);font-size:16px;line-height:1.55;
+  background:linear-gradient(180deg,var(--yellow) 0 52%,var(--sky) 52% 100%)}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--navy);outline-offset:3px;border-radius:4px}
+.wrap{max-width:420px;margin:0 auto;padding:28px 18px 24px}
+h1{font-family:var(--disp);font-weight:400;font-size:34px;line-height:1.1;margin:0 0 4px}
+.lead{margin:0 0 22px;font-size:15px;color:#3E3F44}
+
+.card{display:block;text-decoration:none;position:relative;margin:0 0 22px;transition:transform .15s}
+.card:hover{transform:rotate(-1deg) translateY(-2px)}
+.card:nth-of-type(2):hover{transform:rotate(1deg) translateY(-2px)}
+@media (prefers-reduced-motion:reduce){.card,.card:hover{transition:none;transform:none}}
+
+/* 小票 */
+.receipt{background:var(--paper);padding:18px 18px 22px;transform:rotate(-1.2deg);
+  box-shadow:0 2px 0 rgba(0,0,0,.08),0 10px 24px rgba(80,60,0,.18);
+  -webkit-mask:radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) 0 0/16px 100% repeat-x;
+          mask:radial-gradient(circle 6px at 8px 100%,transparent 98%,#000) 0 0/16px 100% repeat-x}
+.receipt .tag{font-family:var(--num);font-size:12px;color:var(--fade);letter-spacing:.08em}
+.receipt h2{font-family:var(--disp);font-weight:400;font-size:28px;margin:6px 0 2px}
+.receipt p{margin:0;font-size:15px}
+.receipt .row{display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px dashed #B9BBB4;margin-top:14px;padding-top:10px;font-family:var(--num);font-size:14px}
+.receipt .go{color:var(--red);font-family:var(--disp);font-size:18px}
+
+/* 登机牌 */
+.pass{display:grid;grid-template-columns:1fr 78px;background:var(--pass);border-radius:12px;overflow:hidden;transform:rotate(.8deg);
+  box-shadow:0 10px 24px rgba(15,35,65,.25)}
+.pass .main{padding:0 0 16px}
+.pass .band{background:var(--navy);color:#fff;padding:8px 16px;font-family:var(--disp);font-size:14px;letter-spacing:.1em}
+.pass h2{font-family:var(--disp);font-weight:400;font-size:28px;margin:10px 16px 2px;color:var(--navy)}
+.pass p{margin:0 16px;font-size:15px;color:#34465F}
+.pass .stub{border-left:2px dashed #C9D6E6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px;color:var(--navy)}
+.pass .stub b{font-family:var(--num);font-weight:400;font-size:12px;color:#53647E}
+.pass .stub span{font-family:var(--disp);font-size:18px;color:var(--red);writing-mode:vertical-rl;letter-spacing:.15em}
+
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:8px 0 18px}
+.shots h3{grid-column:1/-1;margin:0;font-family:var(--disp);font-weight:400;font-size:20px;color:var(--navy)}
+.shot{display:block;text-decoration:none;color:var(--navy);font-size:13px;text-align:center}
+.shot img{display:block;width:100%;height:auto;aspect-ratio:3/4;border-radius:8px;box-shadow:0 8px 20px rgba(15,35,65,.25);background:#fff;transform:rotate(-1.5deg);transition:transform .15s}
+.shot + .shot img{transform:rotate(1.5deg)}
+.shot:hover img{transform:none}
+.shot span{display:block;margin-top:8px}
+@media (prefers-reduced-motion:reduce){.shot img,.shot + .shot img{transition:none;transform:none}}
+.note{font-size:13px;color:var(--navy);margin:6px 0 0}
+footer{margin-top:34px;font-family:var(--num);font-size:12px;color:var(--navy);opacity:.85}
+footer a{text-decoration:none;border-bottom:1px solid currentColor;display:inline-block;padding:11px 0;margin:-11px 0}
+
+@media(min-width:900px){
+  body{background:linear-gradient(90deg,var(--yellow) 0 50%,var(--sky) 50% 100%)}
+  .wrap{max-width:860px;padding-top:16vh}
+  .lead{max-width:400px}
+  h1{font-size:46px}
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start}
+  .pass{margin-top:38px}
+  .shots{gap:44px;margin-top:20px}
+  .shots .shot{max-width:300px;justify-self:center}
+  .note,footer{color:var(--navy)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>奇奇的留学小工具</h1>
+  <p class="lead">申请季做的两个小东西，免费用，不用注册，数据不出你的浏览器。</p>
+
+  <div class="cards">
+    <a class="card" href="tunjinshou/">
+      <div class="receipt">
+        <div class="tag">NO.001 · 算钱</div>
+        <h2>留学吞金兽</h2>
+        <p>选国家和学位，算读一趟书吞多少金，毕业后几个月吐回来。</p>
+        <div class="row"><span>英美港新澳加</span><span class="go">去算账 →</span></div>
+      </div>
+    </a>
+
+    <a class="card" href="sixian/">
+      <div class="pass">
+        <div class="main">
+          <div class="band">DEADLINE AIR</div>
+          <h2>死线航空</h2>
+          <p>填上截止日，倒推考试、推荐信、文书什么时候该搞定，还能导进日历。</p>
+        </div>
+        <div class="stub"><b>GATE</b><span>去登机</span></div>
+      </div>
+    </a>
+  </div>
+
+  <section class="shots" aria-label="分享图">
+    <h3>分享图</h3>
+    <a class="shot" href="tunjinshou/"><img src="tunjinshou/share-card.png" width="1080" height="1440" loading="lazy" alt="留学吞金兽的分享小票：香港授课硕士一年，合计 31.6 万元，53 个月回本"><span>留学吞金兽的小票</span></a>
+    <a class="shot" href="sixian/"><img src="sixian/share-card.png" width="1080" height="1440" loading="lazy" alt="死线航空的登机牌：示例数据，4 个项目，距第一个截止 24 天"><span>死线航空的登机牌</span></a>
+  </section>
+
+  <p class="note">数字都标了来源，但以学校官网为准哈。</p>
+  <footer>made by 奇奇 · <a href="https://github.com/hailey-studio">github.com/hailey-studio</a></footer>
+</div>
+</body>
+</html>
