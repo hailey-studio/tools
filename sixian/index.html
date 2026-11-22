@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>死线航空：申请倒推时间线</title>
+<meta name="description" content="填上截止日，倒推出考试、推荐信、文书和递交的时间表，生成一张登机牌分享图。不用注册。">
+<meta property="og:type" content="website">
+<meta property="og:title" content="死线航空">
+<meta property="og:description" content="填上截止日，倒推出考试、推荐信、文书和递交的时间表，生成一张登机牌。不用注册。">
+<meta property="og:url" content="https://hailey-studio.github.io/tools/sixian/">
+<meta property="og:image" content="https://hailey-studio.github.io/tools/sixian/share-card.png">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1440">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 字体表不阻塞渲染：Google Fonts 打不开或很慢时（比如在国内），页面先用系统字体显示，不会一直白屏。 -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&text=%E6%AD%BB%E7%BA%BF%E8%88%AA%E7%A9%BA&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+QingKe+HuangYou&display=swap"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&text=%E6%AD%BB%E7%BA%BF%E8%88%AA%E7%A9%BA&display=swap"></noscript>
+<style>
+:root{
+  --sky:#62B4F4;        /* 停机坪上空 */
+  --pass:#FCFDFE;       /* 登机牌卡纸 */
+  --ink:#0F2341;        /* 航司深蓝 */
+  --ink-2:#34465F;
+  --ink-3:#53647E;      /* >= 5.5:1 on pass */
+  --red:#D3302A;        /* 登机口关闭 */
+  --red-wash:#FBE9E7;
+  --amber:#A35F00;
+  --green:#14794A;
+  --tape:#FFC23D;       /* 今天 */
+  --line:#C9D6E6;
+  --disp:"ZCOOL QingKe HuangYou","PingFang SC","Heiti SC","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC","Source Han Sans SC","WenQuanYi Micro Hei",sans-serif;
+  --body:"Songti SC","STSong","Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","SimSun",serif;
+  --tag:"PingFang SC","Heiti SC","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC","Source Han Sans SC","WenQuanYi Micro Hei",sans-serif;
+  --brand:"ZCOOL KuaiLe","ZCOOL QingKe HuangYou","PingFang SC","Heiti SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--sky);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.6;letter-spacing:normal;font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--ink)}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+input[type=date]:focus-within{outline:3px solid var(--ink);outline-offset:2px}
+.band :focus-visible{outline-color:#fff}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.disp{font-family:var(--disp);font-weight:700;font-synthesis:none}
+
+.wrap{max-width:1280px;margin:0 auto;padding:12px 14px 60px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+.layout > *{min-width:0}
+
+/* ---------- the boarding pass (hero) ---------- */
+.pass{position:relative;background:var(--pass);border-radius:16px;box-shadow:0 8px 0 #3C8FD6;display:grid;grid-template-columns:minmax(0,1fr)}
+.band{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--ink);color:#fff;border-radius:16px 16px 0 0;padding:8px 16px}
+.band h1{margin:0;font-family:var(--brand);font-weight:400;font-size:22px;line-height:1.2;letter-spacing:.04em}
+.band span{font-size:14px;opacity:.9}
+.band .samp{display:inline-block;font-style:normal;margin-right:8px;padding:0 6px;border-radius:4px;background:var(--tape);color:var(--ink);font-family:var(--tag);font-weight:700;font-size:12px;line-height:20px;vertical-align:1px;opacity:1}
+.band .samp[hidden]{display:none}
+.pmain{padding:12px 16px 12px}
+.route{display:flex;align-items:flex-end;gap:10px;font-size:13px;color:var(--ink-3)}
+.route div{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.route b{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:20px;color:var(--ink);white-space:nowrap}
+.route .to{text-align:right;align-items:flex-end;margin-left:auto}
+.toname{margin:0;text-align:right;font-size:13px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.route .pl{flex:1;align-self:center;height:0;border-top:2px dotted var(--line);position:relative;margin:0 2px}
+.route .pl::after{content:"✈";position:absolute;left:50%;top:-14px;transform:translateX(-50%);font-size:18px;color:var(--ink);background:var(--pass);padding:0 4px;line-height:24px}
+.tier{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:clamp(46px,14vw,58px);line-height:1.05;margin:12px 0 4px;letter-spacing:.02em;transform-origin:50% 0}
+.tier.hot{color:var(--red)}
+.quip{margin:0;font-size:16px;color:var(--ink-2);letter-spacing:normal}
+.pstub{position:relative;padding:12px 16px 14px;border-top:2px dashed var(--line)}
+.pstub::before,.pstub::after{content:"";position:absolute;top:-12px;width:22px;height:22px;border-radius:50%;background:var(--sky)}
+.pstub::before{left:-11px}.pstub::after{right:-11px}
+.count{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.count .big{display:flex;align-items:baseline;gap:6px;line-height:1}
+.count .big small{font-size:14px;color:var(--ink-3);align-self:center;writing-mode:vertical-rl;letter-spacing:.1em}
+.count .big b{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:56px;white-space:nowrap}
+.count .big em{font-family:var(--disp);font-weight:700;font-synthesis:none;font-style:normal;font-size:22px}
+.count .big.hot b,.count .big.hot em{color:var(--red)}
+.stats{display:flex;gap:12px;font-size:14px;color:var(--ink-2);margin:0;padding:0;list-style:none;flex-wrap:wrap;justify-content:flex-end}
+.stats b{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:20px;color:var(--ink);margin:0 2px}
+.stats .r b{color:var(--red)}
+.nexth{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:18px;margin:10px 0 2px}
+.next{list-style:none;margin:0;padding:0}
+.next li{display:grid;grid-template-columns:minmax(3.2em,auto) minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid #E4EBF3;align-items:baseline}
+.next li:first-child{border-top:0}
+.next .w{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:16px;color:var(--ink);white-space:nowrap}
+.next .w.late{color:var(--red);font-family:var(--tag);font-weight:800;font-size:15px}
+.next .t{font-size:15px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty-pass{padding:6px 0 4px}
+.empty-pass .btn{margin-top:14px}
+.share{grid-column:1/-1;padding:0 16px 16px}
+.share[hidden]{display:none}
+.preview{max-width:360px}
+.preview img{width:100%;display:block;border-radius:6px;-webkit-touch-callout:default;margin-top:6px}
+.preview p{margin:10px 0 0;font-size:14px}
+.preview a{font-size:14px}
+
+/* ---------- buttons ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:8px 16px;border-radius:8px;border:2px solid var(--ink);background:#fff;cursor:pointer;font-size:16px;font-family:var(--body)}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff;font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:20px;letter-spacing:.04em;width:100%}
+.btn.ghost{border-color:rgba(15,35,65,.35)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.warn{border-color:var(--red);color:var(--red);background:transparent}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px}
+.linkbtn{border:0;background:none;padding:4px 0;color:var(--ink);text-decoration:underline;cursor:pointer;font-size:15px;min-height:32px}
+
+/* ---------- inputs: quiet, flat on the sky ---------- */
+.form{font-size:15px}
+.step{margin:0 0 22px}
+.step > h2{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:24px;margin:0 0 6px;line-height:1.2}
+.note{font-size:13.5px;margin:-2px 0 10px;color:var(--ink)}
+label.f{display:grid;grid-template-columns:4.8em minmax(0,1fr);align-items:center;gap:8px;margin-bottom:8px}
+label.f > span{font-size:15px;white-space:nowrap}
+input[type=text],input[type=date],input[type=number],select,textarea{width:100%;min-height:42px;padding:7px 10px;border:1.5px solid var(--ink);border-radius:6px;background:#fff;font-size:16px;min-width:0}
+input[type=number]{width:4.2em;text-align:center}
+.inl{display:flex;align-items:center;gap:6px}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.row2 label.f{grid-template-columns:auto minmax(0,1fr)}
+.prog{background:rgba(255,255,255,.55);border-radius:10px;padding:8px 10px 6px;margin:0 0 10px}
+.prog .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.prog .head b{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:18px}
+.prog .rm{border:0;background:none;color:var(--ink);font-size:14px;padding:6px 4px;cursor:pointer;text-decoration:underline;min-height:32px;position:relative}
+/* 触控区至少约 40px：透明伪元素往外扩，外观和排版不变 */
+.prog .rm::after{content:"";position:absolute;inset:-5px -6px}
+.needs label{position:relative}
+.needs label::after{content:"";position:absolute;inset:-5px -3px}
+.seg label::after{content:"";position:absolute;inset:-3px -2px}
+.needs{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px;border:0;padding:0}
+.needs label{display:inline-flex;align-items:center;gap:5px;font-size:14.5px;min-height:36px;padding:2px 10px 2px 7px;border:1.5px solid var(--ink);border-radius:999px;background:#fff;cursor:pointer}
+.needs input{width:17px;height:17px;margin:0;accent-color:var(--ink)}
+.needs-row{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center}
+.needs-row label.f{grid-template-columns:auto auto;margin-bottom:6px}
+.needs-row select{width:auto}
+.qlabel{font-size:15px;margin:6px 0 4px}
+.qlabel small{font-size:13px;margin-left:6px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.seg label{position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:6px 13px;border:1.5px solid var(--ink);border-radius:999px;font-size:14.5px;background:#fff;cursor:pointer;min-height:36px}
+.seg input:checked + span{background:var(--ink);color:#fff}
+.seg input:focus-visible + span{outline:3px solid var(--ink);outline-offset:2px}
+
+details.leads summary,.paste summary{cursor:pointer;font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:22px;padding:4px 0}
+.leads .note{margin:6px 0 6px}
+table.lt{width:100%;border-collapse:collapse;font-size:14px;background:rgba(255,255,255,.55);border-radius:8px}
+table.lt td{border-top:1px solid rgba(15,35,65,.15);padding:6px 6px;vertical-align:middle}
+table.lt td:last-child{white-space:nowrap;text-align:right}
+table.lt input{width:4.2em;min-height:34px;padding:3px 6px;text-align:right}
+.tag-s,.tag-a{display:inline-block;font-size:12px;padding:0 5px;border-radius:3px;margin-left:4px;vertical-align:1px;line-height:1.5}
+.tag-s{background:var(--ink);color:#fff}
+.tag-a{border:1px solid var(--ink-2);color:var(--ink-2)}
+.paste summary{font-family:var(--body);font-weight:400;font-size:15px;text-decoration:underline;padding:8px 0}
+.paste textarea{height:7em;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace}
+.msg{font-size:14px;margin:6px 0 0;min-height:1em}
+.msg.err{color:#8F1712;background:#FFF1EF;padding:4px 8px;border-radius:4px}
+.msg:empty{padding:0}
+.copybox{width:100%;height:9em;margin-top:6px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;border:1.5px solid var(--ink);border-radius:6px;padding:6px}
+
+/* ---------- full itinerary sheet ---------- */
+.sheet{background:var(--pass);border-radius:4px;padding:18px 14px 24px;position:relative}
+.sheet h2{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:30px;margin:0;line-height:1.2}
+.sheet .sub{color:var(--ink-3);font-size:14px;margin:2px 0 14px}
+.empty{padding:28px 0 8px;color:var(--ink-2)}
+.risks{border-left:4px solid var(--red);background:var(--red-wash);padding:8px 12px;margin:0 0 16px}
+.risks h3{margin:0 0 4px;font-size:17px;color:#A0201B;font-family:var(--disp);font-weight:700;font-synthesis:none}
+.risks ul{margin:0;padding-left:0;list-style:none}
+.risks li{padding:5px 0 5px 22px;position:relative;font-size:15px;border-top:1px dashed rgba(211,48,42,.3)}
+.risks li:first-child{border-top:0}
+.risks li::before{content:"!";position:absolute;left:0;top:7px;width:16px;height:16px;border-radius:50%;background:var(--red);color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:16px;font-family:sans-serif}
+.risks li.info::before{content:"i";background:var(--ink-3)}
+.risks li.mid::before{background:var(--amber)}
+.risks.calm{border-left-color:var(--green);background:#E8F5EE}
+.risks.calm h3{color:var(--green);margin:0}
+.risks details{border-top:1px dashed rgba(211,48,42,.3);font-size:14.5px}
+.risks details summary{cursor:pointer;padding:6px 0}
+
+.gantt-wrap{border:1px solid var(--line);border-radius:4px;padding:8px 6px 4px;margin-bottom:4px;overflow-x:auto;background:#fff}
+.gantt-wrap svg{display:block;min-width:600px;width:100%;height:auto}
+.swipe{font-size:13px;color:var(--ink-3);margin:2px 2px 0}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--ink-2);margin:6px 2px 18px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend svg{flex:none}
+.tip{position:fixed;z-index:20;pointer-events:none;background:var(--ink);color:#fff;font-size:13px;padding:6px 9px;border-radius:4px;max-width:260px;line-height:1.45;display:none}
+
+.plan .bucket{margin:0 0 16px}
+.plan .bh{display:flex;align-items:baseline;gap:10px;margin:0 0 4px;padding-bottom:3px;border-bottom:2px solid var(--ink)}
+.plan .bh b{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:20px}
+.plan .bh small{color:var(--ink-3);font-size:13px}
+.plan .bucket.wk .bh{border-bottom-style:dashed}
+.plan .bucket.now .bh b{background:linear-gradient(transparent 58%,var(--tape) 58%)}
+.item{display:grid;grid-template-columns:64px 14px minmax(0,1fr);gap:8px;padding:7px 0;align-items:start}
+.item + .item{border-top:1px solid #E4EBF3}
+.item .d{font-size:14px;color:var(--ink-2);line-height:1.35}
+.item .d i{font-style:normal;display:block;font-size:12px;color:var(--ink-3)}
+.item .k{margin-top:5px}
+.item .t{font-size:15.5px;line-height:1.45;overflow-wrap:anywhere}
+.item .t small{display:block;color:var(--ink-3);font-size:13.5px;margin-top:2px}
+.item .late{color:var(--red);font-size:13px}
+.item.deadline .t{font-weight:700}
+.item.deadline .d{color:var(--red);font-weight:700}
+.ptag{display:inline-block;font-size:12px;padding:0 6px;margin-right:4px;border-radius:3px;background:#E3EEF9;color:var(--ink);vertical-align:1px}
+.plan .bucket.catch{border:2px solid var(--red);border-radius:6px;padding:8px 12px 4px}
+.plan .bucket.catch .bh{border-bottom-color:var(--red)}
+.plan .bucket.catch .bh b{color:var(--red)}
+.plan .bucket.catch .item{grid-template-columns:92px 14px minmax(0,1fr)}
+.pri{font-size:14px;font-weight:700;margin:10px 0 0}
+.pri span{font-weight:400;color:var(--ink-3);margin-left:4px}
+
+.export{margin-top:18px;padding-top:12px;border-top:2px dashed var(--line)}
+.export h3{font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:20px;margin:0 0 6px}
+.export .small{font-size:13.5px;color:var(--ink-3);margin:8px 0 0}
+
+footer.f{margin:22px 2px 0;font-size:14px}
+footer.f details summary{cursor:pointer;font-family:var(--disp);font-weight:700;font-synthesis:none;font-size:18px;width:max-content;max-width:100%;padding:6px 0}
+footer.f .srcbody{background:rgba(255,255,255,.7);border-radius:8px;padding:10px 12px;margin-top:6px;font-size:13.5px;line-height:1.55}
+footer.f .srcbody p{margin:0 0 8px}
+footer.f .srcbody ul{margin:0 0 8px;padding-left:1.2em}
+footer.f .srcbody li{margin:0 0 4px;overflow-wrap:anywhere}
+
+@media (max-width:899px){html{scroll-padding-bottom:84px}.wrap{padding-bottom:96px}}
+.gobar{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));z-index:15;display:none}
+.gobar.on{display:block}
+.gobar.on.typing{display:none}  /* 打字时让开，免得挡住键盘上方的输入框 */
+.gobar a{display:flex;justify-content:center;align-items:center;min-height:48px;background:var(--ink);color:#fff;text-decoration:none;border-radius:10px;font-size:16px}
+
+@media (min-width:900px){
+  .wrap{padding:28px 28px 80px}
+  .layout{grid-template-columns:minmax(360px,410px) minmax(0,1fr);grid-template-areas:"hero hero" "form out";align-items:start;gap:28px 30px}
+  .pass{grid-area:hero;grid-template-columns:minmax(0,1fr) minmax(400px,480px);grid-template-rows:auto auto 1fr}
+  .pmain{grid-column:1;grid-row:2}
+  .pstub{grid-column:2;grid-row:2/4}
+  .pass.is-empty .pmain{grid-column:1/-1}
+  .share{grid-column:1;grid-row:3;align-self:end}
+  .share .btn.primary{width:auto;padding:8px 30px}
+  .preview{margin-bottom:4px}
+  .next .t{font-size:17px}.next .w{font-size:19px}.nexth{font-size:22px;margin-top:16px}
+  .stats{font-size:15px}
+  .pmain{padding:20px 28px 24px;display:flex;flex-direction:column;justify-content:center}
+  .tier{font-size:88px;margin-top:22px}
+  .quip{font-size:19px}
+  .route{font-size:14px}.route b{font-size:24px}
+  .pstub{border-top:0;border-left:2px dashed var(--line);padding:18px 24px 18px}
+  .pstub::before,.pstub::after{left:-12px;right:auto}
+  .pstub::before{top:-12px}.pstub::after{top:auto;bottom:-12px}
+  .count .big b{font-size:72px}
+  .share{padding:0 28px 22px}
+  .empty-pass .btn{width:auto;padding:8px 28px}
+  .form{grid-area:form;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto;padding:2px 6px 2px 2px}
+  .sheet{grid-area:out;padding:24px 28px 30px}
+  .item{grid-template-columns:84px 14px minmax(0,1fr)}
+  .plan .bucket.catch .item{grid-template-columns:96px 14px minmax(0,1fr)}
+  .swipe,.gobar,.gobar.on{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+@media (prefers-reduced-motion:no-preference){
+  html{scroll-behavior:smooth}
+  /* the one motion moment: the status flips like a departures board when the 称号 changes */
+  .tier.flip{animation:flap .55s cubic-bezier(.3,1.4,.5,1) 1}
+  @keyframes flap{0%{transform:perspective(400px) rotateX(-88deg);opacity:.2}100%{transform:none;opacity:1}}
+}
+@media print{body{background:#fff}.form,.export,.share,.gobar,.swipe{display:none}.layout{display:block}.pass{box-shadow:none;border:1px solid #999}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <main class="layout">
+    <section class="pass" id="hero" aria-labelledby="tierTitle">
+      <div class="band"><h1>死线航空</h1><span><em class="samp" id="sampleTag" hidden>示例数据</em>申请登机牌</span></div>
+      <div id="heroBody" style="display:contents"></div>
+      <div class="share" id="shareRow" hidden>
+        <button class="btn primary" id="mkPng" type="button">📸 生成登机牌图</button>
+        <div class="preview" id="preview"></div>
+      </div>
+    </section>
+
+    <section class="panel form" aria-label="填写信息">
+      <div class="step">
+        <h2>🎓 我要申</h2>
+        <p class="note">⏰ 截止日以官网为准，分轮次就填你要赶的那一轮。</p>
+        <div id="progs"></div>
+        <div class="btnrow">
+          <button class="btn" id="addProg" type="button">＋ 加项目</button>
+          <button class="btn ghost" id="loadSample" type="button">👀 看示例</button>
+        </div>
+      </div>
+
+      <div class="step">
+        <h2>🧳 我的进度</h2>
+        <label class="f"><span><i aria-hidden="true">📆</i> 起算日</span><input type="date" id="today"></label>
+        <p class="qlabel" id="qLangType"><i aria-hidden="true">🗣</i> 语言考试</p>
+        <div class="seg" role="radiogroup" aria-labelledby="qLangType">
+          <label><input type="radio" name="langType" value="ielts_cd" checked><span>雅思机考</span></label>
+          <label><input type="radio" name="langType" value="ielts_paper"><span>雅思纸笔</span></label>
+          <label><input type="radio" name="langType" value="toefl"><span>托福</span></label>
+        </div>
+        <p class="qlabel" id="qLangStatus"><i aria-hidden="true">📈</i> 语言成绩</p>
+        <div class="seg" role="radiogroup" aria-labelledby="qLangStatus">
+          <label><input type="radio" name="langStatus" value="none" checked><span>还没考</span></label>
+          <label><input type="radio" name="langStatus" value="retake"><span>想再刷</span></label>
+          <label><input type="radio" name="langStatus" value="done"><span>够了</span></label>
+        </div>
+        <p class="qlabel" id="qGre"><i aria-hidden="true">🧮</i> GRE / GMAT<small>项目里选了才排</small></p>
+        <div class="seg" role="radiogroup" aria-labelledby="qGre">
+          <label><input type="radio" name="greStatus" value="none" checked><span>还没考</span></label>
+          <label><input type="radio" name="greStatus" value="retake"><span>想再刷</span></label>
+          <label><input type="radio" name="greStatus" value="done"><span>够了</span></label>
+        </div>
+        <label class="f"><span><i aria-hidden="true">✉️</i> 已答应</span><span class="inl"><input type="number" id="recsConfirmed" min="0" max="6" value="1" inputmode="numeric" aria-label="已经答应写推荐信的老师，几位"> 位推荐人</span></label>
+      </div>
+
+      <div class="step">
+        <details class="leads" id="leadBox">
+          <summary>⏱ 倒推天数</summary>
+          <p class="note"><span class="tag-s">官方</span> 考试机构官网　<span class="tag-a">假设</span> 经验值，按自己改</p>
+          <table class="lt" id="leadTable"></table>
+        </details>
+      </div>
+
+      <div class="step" style="margin-bottom:0">
+        <h2>💾 存档</h2>
+        <div class="btnrow">
+          <button class="btn ghost" id="saveJson" type="button">💾 存文件</button>
+          <button class="btn ghost" id="copyJson" type="button">📋 复制</button>
+          <button class="btn ghost" id="pickJson" type="button">📂 导入</button>
+          <input type="file" id="loadJson" accept="application/json,.json" class="vh" tabindex="-1" aria-hidden="true">
+        </div>
+        <details class="paste">
+          <summary>粘贴导入</summary>
+          <label class="vh" for="pasteJson">粘贴方案内容</label>
+          <textarea id="pasteJson" placeholder="粘贴「📋 复制」得到的内容"></textarea>
+          <button class="btn ghost" id="readPaste" type="button">读取</button>
+        </details>
+        <p class="msg" id="fileMsg" role="status"></p>
+        <div class="btnrow" style="margin-top:10px">
+          <button class="btn warn" id="resetAll" type="button">重置</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="sheet" id="out" aria-labelledby="outTitle">
+      <p class="vh" id="liveMsg" role="status" aria-live="polite"></p>
+      <div id="result"></div>
+      <div class="export" id="exportBox" hidden>
+        <h3>📅 存进日历</h3>
+        <div class="btnrow">
+          <button class="btn" id="dlIcs" type="button">下载 .ics</button>
+          <button class="btn ghost" id="copyIcs" type="button">📋 复制</button>
+        </div>
+        <p class="msg" id="icsMsg" role="status"></p>
+        <p class="small">苹果、Google、Outlook 日历都能导入。下载没反应就点复制，粘贴后存成 .ics 文件。</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="f">
+    <details>
+      <summary>📎 数据来源</summary>
+      <div class="srcbody" id="srcBody"></div>
+    </details>
+  </footer>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+<div class="gobar" id="gobar"><a href="#out" id="gobarLink">🗺 看完整航程</a></div>
+
+<script>
+(function(){
+"use strict";
+var $ = function(s,r){return (r||document).querySelector(s)};
+var $$ = function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+
+/* ---------- dates as integer day numbers (UTC) ---------- */
+var DAY = 86400000;
+function parseD(s){ if(!s||!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null; var p=s.split('-'); return Math.round(Date.UTC(+p[0],+p[1]-1,+p[2])/DAY); }
+function toDate(n){ return new Date(n*DAY); }
+function iso(n){ var d=toDate(n); return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate()); }
+function pad(x){return (x<10?'0':'')+x}
+function md(n){ var d=toDate(n); return (d.getUTCMonth()+1)+'月'+d.getUTCDate()+'日'; }
+function ymd(n){ var d=toDate(n); return d.getUTCFullYear()+'年'+md(n); }
+function ym(n){ var d=toDate(n); return d.getUTCFullYear()+'年'+(d.getUTCMonth()+1)+'月'; }
+var WK=['周日','周一','周二','周三','周四','周五','周六'];
+function wd(n){ return WK[toDate(n).getUTCDay()]; }
+function monday(n){ var w=toDate(n).getUTCDay(); return n-((w+6)%7); }
+function localToday(){ var d=new Date(); return Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/DAY); }
+
+/* ---------- lead times ---------- */
+var LEADS = [
+  {k:'ielts_cd', label:'雅思机考出分', days:2, kind:'s', src:'https://www.ielts.org/for-test-takers/results', note:'官网：机考通常 1-2 天出分；英国文化协会页面写 1-5 天'},
+  {k:'ielts_paper', label:'雅思纸笔出分', days:13, kind:'s', src:'https://takeielts.britishcouncil.org/results', note:'英国文化协会页面写 13 天'},
+  {k:'toefl', label:'托福成绩送达学校', days:16, kind:'s', src:'https://www.ets.org/toefl/test-takers/ibt/faq/score-reports.html', note:'ETS：考后 3 天出分，11 个工作日内寄给学校（约 16 天）'},
+  {k:'gre', label:'GRE 正式成绩', days:10, kind:'s', src:'https://www.ets.org/gre/test-takers/general-test/scores/get-scores.html', note:'ETS：考后 8-10 天'},
+  {k:'gmat', label:'GMAT 正式成绩', days:5, kind:'s', src:'https://www.mba.com/exams/gmat-focus-edition/scores/official-score-reports', note:'GMAC：3-5 天，偶尔最长 20 天'},
+  {k:'toSchool', label:'雅思/GRE/GMAT 出分后送到学校、被核实', days:7, kind:'a', note:'各校核分方式不同'},
+  {k:'book', label:'从报名到能考上', days:10, kind:'a', note:'热门考位可能更久'},
+  {k:'retakeGap', label:'为一次重考预留', days:28, kind:'a', note:'等出分、再报名、再复习'},
+  {k:'prep', label:'第一次考试前的备考期', days:56, kind:'a', note:'8 周，按基础增减'},
+  {k:'recAsk', label:'截止前多久请推荐人', days:42, kind:'s', src:'https://careerservices.upenn.edu/grad-school-letters-of-recommendation/', note:'Penn 职业中心：给老师 4-6 周；这里取 6 周'},
+  {k:'recRemind', label:'截止前多久提醒推荐人', days:14, kind:'a'},
+  {k:'psStart', label:'个人陈述 (PS) 开写', days:56, kind:'a', note:'截止前 8 周'},
+  {k:'psFinal', label:'PS 定稿', days:10, kind:'a'},
+  {k:'cvFinal', label:'简历 (CV) 定稿', days:21, kind:'a', note:'请推荐人前也要用到'},
+  {k:'docs', label:'成绩单、在读证明等材料备齐', days:28, kind:'a', note:'学校盖章常要 1-2 周'},
+  {k:'portfolio', label:'作品集开工', days:84, kind:'a', note:'截止前 12 周'},
+  {k:'submit', label:'比截止日提前几天递交', days:5, kind:'a', note:'避开系统拥堵'}
+];
+var L = {}; LEADS.forEach(function(x){ L[x.k]=x.days; });
+
+var DESTS = ['香港','英国','新加坡','美国','澳大利亚','欧洲','加拿大','其他'];
+var KINDS = {
+  test:{name:'考试', color:'#1D5FD0', shape:'circle'},
+  rec:{name:'推荐信', color:'#14794A', shape:'triangle'},
+  write:{name:'文书和材料', color:'#A0398F', shape:'square'},
+  extra:{name:'作品集和面试', color:'#B86E00', shape:'diamond'},
+  submit:{name:'递交', color:'#0F2341', shape:'bar'},
+  deadline:{name:'截止日', color:'#D3302A', shape:'ring'}
+};
+
+/* ---------- state ---------- */
+var uid = 0;
+function newProg(o){ o=o||{}; return {
+  sample: !!o.sample, id: ++uid, name:o.name||'', dest:o.dest||'香港', deadline:o.deadline||'', round:o.round||'',
+  lang: o.lang!==undefined?o.lang:true, test:o.test||'none', recs:o.recs!==undefined?o.recs:2,
+  ps:o.ps!==undefined?o.ps:true, cv:o.cv!==undefined?o.cv:true, portfolio:!!o.portfolio, interview:!!o.interview }; }
+var state = { progs:[ newProg() ] };
+
+function readStatus(){
+  return {
+    today: parseD($('#today').value) || localToday(),
+    langType: ($('input[name=langType]:checked')||{}).value || 'ielts_cd',
+    langStatus: ($('input[name=langStatus]:checked')||{}).value || 'none',
+    greStatus: ($('input[name=greStatus]:checked')||{}).value || 'none',
+    recsConfirmed: Math.max(0, parseInt($('#recsConfirmed').value,10)||0)
+  };
+}
+
+/* ---------- form rendering ---------- */
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]}); }
+function progLabel(p,i){ return p.name.trim() || ('项目 '+(i+1)); }
+function ico(e){ return '<i aria-hidden="true">'+e+'</i> '; }
+function renderProgs(){
+  var box = $('#progs');
+  box.innerHTML = state.progs.map(function(p,i){
+    var id='p'+p.id;
+    return '<div class="prog" data-id="'+p.id+'" role="group" aria-label="项目 '+(i+1)+'">'+
+      '<div class="head"><b>✈ '+(i+1)+'</b>'+(state.progs.length>1?'<button class="rm" type="button" data-rm="'+p.id+'" aria-label="删除项目 '+(i+1)+'">删除</button>':'')+'</div>'+
+      '<label class="f"><span>'+ico('🎓')+'项目</span><input type="text" data-f="name" maxlength="40" placeholder="学校 + 项目" aria-label="学校和项目" value="'+esc(p.name)+'"></label>'+
+      '<label class="f"><span>'+ico('⏰')+'截止</span><input type="date" data-f="deadline" aria-label="截止日期" value="'+esc(p.deadline)+'"></label>'+
+      '<div class="row2">'+
+        '<label class="f"><span>'+ico('📍')+'</span><select data-f="dest" aria-label="地区">'+DESTS.map(function(d){return '<option'+(d===p.dest?' selected':'')+'>'+d+'</option>'}).join('')+'</select></label>'+
+        '<label class="f"><span>'+ico('🔁')+'</span><input type="text" data-f="round" maxlength="12" placeholder="轮次，可空" aria-label="轮次，可不填" value="'+esc(p.round)+'"></label>'+
+      '</div>'+
+      '<div class="needs" role="group" aria-label="这个项目要交什么">'+
+        chk(id,'lang','🗣','语言',p.lang)+chk(id,'cv','📄','CV',p.cv)+chk(id,'ps','✍️','PS',p.ps)+chk(id,'portfolio','🎨','作品集',p.portfolio)+chk(id,'interview','🎤','面试',p.interview)+
+      '</div>'+
+      '<div class="needs-row">'+
+        '<label class="f"><span>'+ico('🧮')+'</span><select data-f="test" aria-label="GRE 或 GMAT">'+
+          [['none','不考 G'],['gre','GRE'],['gmat','GMAT']].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===p.test?' selected':'')+'>'+o[1]+'</option>'}).join('')+
+        '</select></label>'+
+        '<label class="f"><span>'+ico('✉️')+'</span><span class="inl"><input type="number" data-f="recs" min="0" max="5" inputmode="numeric" aria-label="推荐信几封" value="'+(+p.recs||0)+'"> 封推荐信</span></label>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  $('#addProg').disabled = state.progs.length>=8;
+  $('#addProg').textContent = state.progs.length>=8 ? '最多 8 个' : '＋ 加项目';
+}
+function chk(id,f,emo,label,on){ return '<label><input type="checkbox" data-f="'+f+'"'+(on?' checked':'')+'><span aria-hidden="true">'+emo+'</span>'+label+'</label>'; }
+
+function renderLeads(){
+  $('#leadTable').innerHTML = LEADS.map(function(x){
+    var tag = x.kind==='s' ? '<span class="tag-s">官方</span>' : '<span class="tag-a">假设</span>';
+    return '<tr><td>'+x.label+tag+'</td>'+
+      '<td><label><span class="vh">'+x.label+'（天）</span><input type="number" min="0" max="365" inputmode="numeric" data-lead="'+x.k+'" value="'+L[x.k]+'"></label> 天</td></tr>';
+  }).join('');
+}
+function renderSources(){
+  var off = LEADS.filter(function(x){return x.src}), asm = LEADS.filter(function(x){return !x.src});
+  $('#srcBody').innerHTML =
+    '<p>怎么排的：从每个截止日减去「⏱ 倒推天数」（出分、寄成绩、老师写信、改稿），倒推出每件事最晚哪天做。已经错过的事挪到今天，放进赶紧做清单。</p>'+
+    '<p>官方出分时间 2026 年 11 月核对：</p><ul>'+off.map(function(x){ return '<li>'+esc(x.label)+'：'+esc(x.note||'')+' <a href="'+x.src+'" target="_blank" rel="noopener">来源</a></li>'; }).join('')+'</ul>'+
+    '<p>经验值（没找到权威来源，可以自己改）：'+asm.map(function(x){ return esc(x.label)+' '+x.days+' 天'+(x.note?'（'+esc(x.note)+'）':''); }).join('；')+'。</p>'+
+    '<p>不少港校是滚动录取，名额可能在截止前招满。截止日、轮次、能不能后补成绩，每年都会变，以项目官网为准。这是排时间的工具，不是录取建议。</p>'+
+    '<p>不用注册。数据只在这个网页里算，不上传、不保存，关掉就清空。字体来自 Google Fonts。</p>';
+}
+
+/* ---------- planner ---------- */
+function plan(st){
+  var T = st.today, items = [], risks = [];
+  var progs = state.progs.map(function(p,i){ return Object.assign({}, p, {idx:i, label:progLabel(p,i), D:parseD(p.deadline)}); });
+  var noDate = progs.filter(function(p){ return p.D===null; });
+  var past = progs.filter(function(p){ return p.D!==null && p.D<T; });
+  var live = progs.filter(function(p){ return p.D!==null && p.D>=T; }).sort(function(a,b){return a.D-b.D});
+
+  noDate.forEach(function(p){ if(p.name.trim()) risks.push({lv:'info', t:p.label+'：还没填截止日期，暂不排进时间线。'}); });
+  past.forEach(function(p){ risks.push({lv:'high', t:p.label+'：截止日 '+ymd(p.D)+' 已经过了。看看官网有没有下一轮。'}); });
+
+  function add(date, kind, title, detail, prog, extra){
+    var it = {date:date, kind:kind, title:title, detail:detail||'', prog:prog||null};
+    if(date < T){ it.late = date; it.date = T; }
+    if(extra) Object.assign(it, extra);
+    items.push(it); return it;
+  }
+
+  // tests
+  function planTest(code, name, status, arrive, needers, resultDays){
+    if(!needers.length) return;
+    if(status==='done'){
+      needers.forEach(function(p){ add(p.D-14, 'test', '把'+name+'成绩送到 '+p.label, '在申请系统里确认已送达或已上传', p); });
+      return;
+    }
+    var feasible = needers.filter(function(p){ return p.D - arrive >= T + L.book; });
+    needers.filter(function(p){ return feasible.indexOf(p)<0; }).forEach(function(p){
+      risks.push({lv:'high', t:p.label+'：截止前已经排不进一次'+name+'（报名约 '+L.book+' 天 + 出分到校约 '+arrive+' 天）。查官网是否接受截止后补交成绩，或用已有成绩申请。'});
+    });
+    if(!feasible.length) return;
+    var Dmin = feasible[0].D;
+    var lastSit = Dmin - arrive;
+    var firstOK = T + L.book;
+    if(status==='none'){
+      var first = lastSit - L.retakeGap;
+      var prepStart = first - L.prep;
+      if(first < firstOK){
+        risks.push({lv:'mid', t:name+'：按 '+feasible[0].label+' 的截止日，已经留不出重考的时间，最晚 '+ymd(lastSit)+' 那次要一次考到。'});
+        first = firstOK;
+      }
+      if(L.prep > 0){
+        if(prepStart > T) add(prepStart, 'test', '开始准备'+name, '离建议考试日约 '+Math.round((first-prepStart)/7)+' 周');
+        else add(T, 'test', '现在就开始准备'+name, '备考期比假设的 '+Math.round(L.prep/7)+' 周短，优先练最弱的部分');
+      }
+      add(first - L.book, 'test', '报名'+name, '锁定 '+md(first)+' 前后的考位');
+      add(first, 'test', name+' 第一次考试（建议日期）', '最晚考试日 '+md(lastSit)+'，赶 '+feasible[0].label);
+      if(first < lastSit){
+        add(Math.min(lastSit, first + Math.max(1,resultDays)), 'test', '看'+name+'分数，决定要不要重考', '如需重考，最晚 '+md(lastSit)+' 考');
+        add(lastSit, 'test', name+' 最晚考试日', '再晚出分就赶不上 '+feasible[0].label, null, {hard:true});
+      }
+    } else {
+      var re = Math.max(firstOK, lastSit - L.retakeGap);
+      add(re - L.book, 'test', '报名'+name+'重考', '');
+      add(re, 'test', name+' 重考（建议日期）', '最晚考试日 '+md(lastSit)+'，赶 '+feasible[0].label);
+      if(re < lastSit) add(lastSit, 'test', name+' 最晚考试日', '再晚出分就赶不上 '+feasible[0].label, null, {hard:true});
+      if(code==='ielts_cd') risks.push({lv:'info', t:'雅思机考可以只重考一科 (One Skill Retake)，须在原考试 60 天内考完，且原考试是机考。'});
+    }
+    // later programmes: last date per programme
+    feasible.slice(1).forEach(function(p){
+      if(p.D - Dmin > 21) add(p.D-14, 'test', '确认'+name+'成绩已送到 '+p.label, '', p);
+    });
+  }
+  var langArrive = st.langType==='ielts_cd' ? L.ielts_cd + L.toSchool : st.langType==='ielts_paper' ? L.ielts_paper + L.toSchool : L.toefl;
+  var langName = st.langType==='toefl' ? '托福' : '雅思';
+  var langResult = st.langType==='ielts_cd' ? L.ielts_cd : st.langType==='ielts_paper' ? L.ielts_paper : 3;
+  planTest(st.langType, langName, st.langStatus, langArrive, live.filter(function(p){return p.lang}), langResult);
+  var greN = live.filter(function(p){return p.test==='gre'}), gmN = live.filter(function(p){return p.test==='gmat'});
+  planTest('gre','GRE', st.greStatus, L.gre + L.toSchool, greN, L.gre);
+  planTest('gmat','GMAT', st.greStatus, L.gmat + L.toSchool, gmN, L.gmat);
+  if(greN.length && gmN.length) risks.push({lv:'info', t:'你同时选了 GRE 和 GMAT。很多项目两者都收，查一下能不能只考一个。'});
+
+  // recommenders
+  var recProgs = live.filter(function(p){return p.recs>0});
+  var need = recProgs.reduce(function(m,p){return Math.max(m,p.recs)},0);
+  var firstAsk = recProgs.length ? recProgs[0].D - L.recAsk : null;
+  if(need > st.recsConfirmed && recProgs.length){
+    var short = need - st.recsConfirmed;
+    var findBy = recProgs.filter(function(p){return p.recs>st.recsConfirmed})[0].D - L.recAsk - 14;
+    var it = add(findBy, 'rec', '再找 '+short+' 位推荐人并当面或邮件确认', '共需要 '+need+' 位；先问愿不愿意，再发正式链接');
+    if(it.late!==undefined) risks.push({lv:'high', t:'推荐人还差 '+short+' 位，按留给老师 '+L.recAsk+' 天写信算已经晚了，这周就联系。'});
+  }
+  recProgs.forEach(function(p){
+    var ask = p.D - L.recAsk;
+    var it = add(ask, 'rec', '给推荐人发 '+p.label+' 的推荐链接', '附上 CV、PS 草稿、项目简介和截止日', p);
+    if(it.late!==undefined){
+      var left = p.D - T;
+      risks.push({lv: left<14?'high':'mid', t:p.label+'：推荐人只剩 '+left+' 天写信（建议 '+L.recAsk+' 天）。马上发，并问清楚能否按时提交。'});
+    }
+    if(L.recRemind > 0 && p.D - L.recRemind > Math.max(ask,T)) add(p.D - L.recRemind, 'rec', '提醒推荐人：'+p.label+' 还有 '+L.recRemind+' 天截止', '查系统里推荐信是否已提交', p);
+  });
+
+  // CV
+  var cvProgs = live.filter(function(p){return p.cv});
+  if(cvProgs.length){
+    var cvBy = cvProgs[0].D - L.cvFinal;
+    if(firstAsk!==null) cvBy = Math.min(cvBy, firstAsk - 3);
+    add(cvBy, 'write', '简历 (CV) 定稿', firstAsk!==null?'请推荐人时要一起发过去':'');
+  }
+  // PS
+  var psProgs = live.filter(function(p){return p.ps});
+  psProgs.forEach(function(p,i){
+    if(i===0){
+      var f = p.D - L.psFinal, s = Math.min(p.D - L.psStart, f), mid = Math.round((s+f)/2);
+      var it = add(s, 'write', '开始写个人陈述 (PS)：先列素材和经历', '以 '+p.label+' 为主版本', p);
+      if(it.late!==undefined && p.D - T < L.psFinal + 14) risks.push({lv:'mid', t:p.label+'：离截止只有 '+(p.D-T)+' 天，PS 时间偏紧，先保证一版完整的稿子。'});
+      if(mid > T && mid > s && mid < f) add(mid, 'write', 'PS 第二稿，找人读一遍', '', p);
+      add(f, 'write', 'PS 定稿：'+p.label, '', p);
+    } else {
+      add(Math.min(p.D - L.psFinal, p.D - Math.max(L.psFinal+11, 21)), 'write', '按 '+p.label+' 改写 PS', '换掉学校相关的段落，回答这个项目自己的问题', p);
+      add(p.D - L.psFinal, 'write', 'PS 定稿：'+p.label, '', p);
+    }
+  });
+  // documents
+  if(live.length) add(live[0].D - L.docs, 'write', '备齐材料：成绩单、在读证明、护照、证书扫描件', '需要学校盖章或翻译的，现在就去办');
+  // portfolio + interview
+  live.forEach(function(p){
+    if(p.portfolio){
+      var it = add(p.D - L.portfolio, 'extra', '开始做作品集：'+p.label, '', p);
+      if(it.late!==undefined && p.D - T < 42) risks.push({lv:'mid', t:p.label+'：作品集只剩 '+(p.D-T)+' 天（假设需要 '+Math.round(L.portfolio/7)+' 周），先选最好的 3-5 个作品。'});
+      add(p.D - 14, 'extra', '作品集定稿并导出：'+p.label, '检查文件大小和格式要求', p);
+    }
+  });
+  // submissions + deadlines
+  live.forEach(function(p){
+    var sub = add(p.D - L.submit, 'submit', '递交 '+p.label, '交前核对：成绩、推荐信状态、申请费', p);
+    add(p.D, 'deadline', p.label+' 截止'+(p.round?'（'+p.round+'）':''), '', p);
+    if(p.interview) add(p.D - L.submit + 7, 'extra', '开始准备 '+p.label+' 面试', '常见题、为什么选这个项目、自我介绍', p);
+    if(p.dest==='香港' && p.D - T > 45) risks.push({lv:'info', t:p.label+'：不少港校是滚动录取，名额可能在截止前招满，能早交就早交。'});
+  });
+
+  // order: same date -> by kind order
+  var order = {test:1, rec:2, write:3, extra:4, submit:5, deadline:6};
+  items.sort(function(a,b){ return a.date-b.date || order[a.kind]-order[b.kind] || (a.prog?a.prog.idx:-1)-(b.prog?b.prog.idx:-1); });
+  // catch-up priority: 1 = blocks other people or a deadline, 2 = your own writing/material work
+  items.forEach(function(it){
+    if(it.late===undefined) return;
+    it.pri = (it.kind==='submit'||it.kind==='rec'||it.kind==='test') ? 1 : 2;
+    var ds = it.prog ? it.prog.D : (live.length ? live[0].D : T);
+    it.due = ds; // the deadline this item is racing against
+  });
+  var lvOrder = {high:0, mid:1, info:2};
+  risks.sort(function(a,b){ return lvOrder[a.lv]-lvOrder[b.lv]; });
+  return {items:items, risks:risks, live:live, today:T};
+}
+
+/* week-by-week inside the 6 weeks before any deadline, month-by-month elsewhere */
+function buckets(res){
+  var dls = res.live.map(function(p){return p.D});
+  var out = [], cur = null;
+  res.items.forEach(function(it){
+    if(it.late!==undefined) return; // shown in the catch-up list instead
+    var weekly = dls.some(function(D){ return D - it.date >= -14 && D - it.date <= 42; });
+    var key, label, small;
+    if(weekly){ var m = monday(it.date); key='w'+m; label=md(m)+' 至 '+md(m+6); small='按周'; }
+    else { var d=toDate(it.date); key='m'+d.getUTCFullYear()+'-'+d.getUTCMonth(); label=ym(it.date); small='按月'; }
+    if(!cur || cur.key!==key){
+      var again = out.some(function(b){return b.key===key});
+      cur = {key:key, label:label+(again?'（续）':''), small:small, weekly:weekly, items:[]};
+      out.push(cur);
+    }
+    cur.items.push(it);
+  });
+  return out;
+}
+/* ---------- output rendering ---------- */
+function shapeSvg(kind, size){
+  var k=KINDS[kind], s=size||12, h=s/2, c=k.color;
+  var inner;
+  if(k.shape==='circle') inner='<circle cx="'+h+'" cy="'+h+'" r="'+(h-1)+'" fill="'+c+'"/>';
+  else if(k.shape==='triangle') inner='<path d="M'+h+' 1 L'+(s-1)+' '+(s-1)+' L1 '+(s-1)+'Z" fill="'+c+'"/>';
+  else if(k.shape==='square') inner='<rect x="1.5" y="1.5" width="'+(s-3)+'" height="'+(s-3)+'" rx="1" fill="'+c+'"/>';
+  else if(k.shape==='diamond') inner='<path d="M'+h+' 0.5 L'+(s-0.5)+' '+h+' L'+h+' '+(s-0.5)+' L0.5 '+h+'Z" fill="'+c+'"/>';
+  else if(k.shape==='bar') inner='<rect x="'+(h-2)+'" y="0.5" width="4" height="'+(s-1)+'" rx="1" fill="'+c+'"/>';
+  else inner='<circle cx="'+h+'" cy="'+h+'" r="'+(h-1.5)+'" fill="none" stroke="'+c+'" stroke-width="2"/>';
+  return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 '+s+' '+s+'" aria-hidden="true">'+inner+'</svg>';
+}
+
+function gantt(res){
+  var T=res.today, live=res.live;
+  var end = live[live.length-1].D + 10;
+  var start = T;
+  var W=760, left=150, right=16, rowH=34, top=30;
+  var rows = [{label:'共同任务', prog:null}].concat(live.map(function(p){return {label:p.label, prog:p}}));
+  var H = top + rows.length*rowH + 10;
+  var x = function(d){ return left + (d-start)/(end-start)*(W-left-right); };
+  var s = '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="时间线总览图：每行一个项目，从今天到截止日">';
+  // month ticks
+  var d0=toDate(start), y=d0.getUTCFullYear(), m=d0.getUTCMonth()+1, lastLab=-1e9;
+  for(var i=0;i<30;i++){
+    if(m>11){m=0;y++;}
+    var md1 = Math.round(Date.UTC(y,m,1)/DAY); m++;
+    if(md1>end) break;
+    var xx=x(md1);
+    s+='<line x1="'+xx+'" x2="'+xx+'" y1="'+(top-6)+'" y2="'+(H-6)+'" stroke="#E1E9F2" stroke-width="1"/>';
+    var mo=toDate(md1).getUTCMonth()+1;
+    if(xx-lastLab>=34){ s+='<text x="'+(xx+3)+'" y="'+(top-12)+'" font-size="12" fill="#53647E">'+(mo===1?toDate(md1).getUTCFullYear():mo+'月')+'</text>'; lastLab=xx; }
+  }
+  // today
+  s+='<rect x="'+(x(T)-1)+'" y="'+(top-6)+'" width="3" height="'+(H-top)+'" fill="#FFC23D"/>';
+  s+='<text x="'+(x(T)+4)+'" y="'+(H-2)+'" font-size="11" fill="#53647E">今天</text>';
+  rows.forEach(function(r,ri){
+    var cy = top + ri*rowH + rowH/2;
+    if(ri>0) s+='<line x1="0" x2="'+W+'" y1="'+(cy-rowH/2)+'" y2="'+(cy-rowH/2)+'" stroke="rgba(27,37,64,.08)"/>';
+    var lab = r.label.length>9 ? r.label.slice(0,9)+'…' : r.label;
+    s+='<text x="4" y="'+(cy+4)+'" font-size="13" fill="#0F2341"'+(r.prog?'':' font-style="normal" fill-opacity=".7"')+'>'+esc(lab)+'</text>';
+    var its = res.items.filter(function(it){ return r.prog ? (it.prog && it.prog.id===r.prog.id) : !it.prog; });
+    if(r.prog){
+      var first = its.length? its[0].date : r.prog.D;
+      s+='<rect x="'+x(first)+'" y="'+(cy-3)+'" width="'+Math.max(2,x(r.prog.D)-x(first))+'" height="6" rx="3" fill="#E3EEF9"/>';
+    }
+    its.forEach(function(it){
+      var cx=x(it.date), k=KINDS[it.kind], tipTxt=esc(md(it.date)+' '+wd(it.date)+'：'+it.title);
+      var g='<g class="mk" data-tip="'+tipTxt+'">';
+      g+='<rect x="'+(cx-9)+'" y="'+(cy-12)+'" width="18" height="24" fill="transparent"/>';
+      if(it.kind==='deadline'){
+        g+='<path d="M'+cx+' '+(cy-6)+' L'+(cx+6)+' '+cy+' L'+cx+' '+(cy+6)+' L'+(cx-6)+' '+cy+'Z" fill="#D3302A"/>';
+        g+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="13" ry="10" fill="none" stroke="#D3302A" stroke-width="2" transform="rotate(-12 '+cx+' '+cy+')"/>';
+      } else if(k.shape==='circle') g+='<circle cx="'+cx+'" cy="'+cy+'" r="5" fill="'+k.color+'" stroke="#fff" stroke-width="2"/>';
+      else if(k.shape==='triangle') g+='<path d="M'+cx+' '+(cy-6)+' L'+(cx+6)+' '+(cy+5)+' L'+(cx-6)+' '+(cy+5)+'Z" fill="'+k.color+'" stroke="#fff" stroke-width="2"/>';
+      else if(k.shape==='square') g+='<rect x="'+(cx-5)+'" y="'+(cy-5)+'" width="10" height="10" rx="1" fill="'+k.color+'" stroke="#fff" stroke-width="2"/>';
+      else if(k.shape==='diamond') g+='<path d="M'+cx+' '+(cy-6)+' L'+(cx+6)+' '+cy+' L'+cx+' '+(cy+6)+' L'+(cx-6)+' '+cy+'Z" fill="'+k.color+'" stroke="#fff" stroke-width="2"/>';
+      else g+='<rect x="'+(cx-2.5)+'" y="'+(cy-8)+'" width="5" height="16" rx="1" fill="'+k.color+'" stroke="#fff" stroke-width="1.5"/>';
+      s+=g+'</g>';
+    });
+  });
+  return s+'</svg>';
+}
+
+var lastRes = null;
+function daysLeft(n){ return n===0 ? '今天截止' : n===1 ? '明天截止' : '还有 '+n+' 天截止'; }
+function catchup(res){
+  return res.items.filter(function(it){return it.late!==undefined}).sort(function(a,b){
+    return a.pri-b.pri || a.due-b.due || a.late-b.late; });
+}
+/* the 3 things to do next: overdue items by priority, then upcoming non-deadline items by date */
+function nextActions(res, n){
+  var c = catchup(res);
+  var rest = res.items.filter(function(it){ return it.late===undefined && it.kind!=='deadline'; });
+  return c.concat(rest).slice(0, n||3);
+}
+/* 称号 tiers: how tight the plan is. o = overdue items, c = conflicts (risk notes that are not just info), f = days to first deadline */
+var TIERS = [
+  {t:'提前值机人', l:'登机口还没开，我已经坐在这了'},
+  {t:'准点登机人', l:'不早不晚，跟着登机牌走就行'},
+  {t:'安检排队中', l:'队有点长，但还赶得上'},
+  {t:'航站楼狂奔', l:'拖着行李箱百米冲刺，问题不大'},
+  {t:'广播点名中', l:'广播已经在喊我名字了'}
+];
+function tierOf(res){
+  var o = catchup(res).length, c = res.risks.filter(function(r){return r.lv!=='info'}).length, f = res.live[0].D - res.today;
+  var i = (f<=3 || o>=8) ? 4 : (f<=14 || o>=4 || c>=3) ? 3 : (o>=1 || c>=1) ? 2 : (f<=60) ? 1 : 0;
+  return {i:i, t:TIERS[i].t, l:TIERS[i].l, o:o, c:c, f:f};
+}
+function whenShort(it, T){ return it.late!==undefined ? '赶紧做' : it.date===T ? '今天' : it.date===T+1 ? '明天' : md(it.date); }
+var lastTierKey = null;
+function renderHero(res, nm){
+  var hb = $('#heroBody');
+  var from = '<div><small>出发</small><b>'+md(res.today)+'</b></div><span class="pl" aria-hidden="true"></span>';
+  if(!res.live.length){
+    var gone = nm>0;
+    hb.innerHTML = '<div class="pmain"><div class="route">'+from+'<div class="to"><small>截止</small><b>'+(gone?'已过':'？')+'</b></div></div>'+
+      '<div class="empty-pass"><h2 class="tier" id="tierTitle">'+(gone?'航班已起飞':'待值机')+'</h2>'+
+      (gone?'<p class="quip">截止日都过了，改「起算日」或填下一轮</p>':'')+
+      '<button class="btn primary" id="startBtn" type="button">⏰ 填截止日</button></div></div>';
+    $('#shareRow').hidden = true; $('#hero').classList.add('is-empty'); lastTierKey = null; return;
+  }
+  var tr = tierOf(res), T = res.today, f = tr.f, p0 = res.live[0], hot = tr.i>=3;
+  var acts = nextActions(res,3);
+  var big = f===0 ? '<b>今天</b>' : f===1 ? '<b>明天</b>' : '<b>'+f+'</b><em>天</em>';
+  hb.innerHTML =
+    '<div class="pmain"><div class="route">'+from+'<div class="to"><small>截止</small><b>'+md(p0.D)+'</b></div></div><p class="toname">'+esc(p0.label)+'</p>'+
+      '<h2 class="tier'+(hot?' hot':'')+'" id="tierTitle">'+tr.t+'</h2><p class="quip" id="tierLine">'+tr.l+'</p></div>'+
+    '<div class="pstub"><div class="count"><div class="big'+(hot?' hot':'')+'" id="daysBig"><small>距截止</small>'+big+'</div>'+
+      '<ul class="stats"><li class="'+(tr.o?'r':'')+'">赶紧做<b>'+tr.o+'</b>件</li><li class="'+(tr.c?'r':'')+'">冲突<b>'+tr.c+'</b>处</li></ul></div>'+
+      '<p class="nexth">接下来先做这 '+acts.length+' 件事</p><ol class="next" id="nextList">'+
+      acts.map(function(it){ return '<li><span class="w'+(it.late!==undefined?' late':'')+'">'+whenShort(it,T)+'</span><span class="t">'+esc(it.title)+'</span></li>'; }).join('')+
+    '</ol></div>';
+  $('#shareRow').hidden = false; $('#hero').classList.remove('is-empty');
+  var key = tr.i;
+  if(lastTierKey!==key){ var el=$('#tierTitle'); el.classList.add('flip'); }
+  lastTierKey = key;
+}
+function itemHtml(it, catchMode){
+  var dcol = catchMode ? '原定 '+md(it.late)+'<i>晚了 '+(it.date-it.late)+' 天</i>' : md(it.date)+'<i>'+wd(it.date)+'</i>';
+  return '<div class="item '+it.kind+'"><div class="d">'+dcol+'</div><div class="k">'+shapeSvg(it.kind,12)+'</div>'+
+    '<div class="t">'+esc(it.title)+(it.detail?'<small>'+esc(it.detail)+'</small>':'')+
+    (catchMode && it.prog ? '<small class="late">'+esc(it.prog.label)+' '+daysLeft(it.due-it.date)+'</small>' : '')+'</div></div>';
+}
+function isSample(){ return state.progs.some(function(p){ return p.sample; }); }
+function render(){
+  clearPreview();
+  $('#sampleTag').hidden = !isSample();
+  var st = readStatus();
+  var res = plan(st);
+  lastRes = res;
+  var box = $('#result');
+  var nm = state.progs.filter(function(p){return parseD(p.deadline)!==null}).length;
+  renderHero(res, nm);
+  if(!res.live.length){
+    box.innerHTML = '<h2 id="outTitle">🗺 完整航程</h2><div class="empty">'+(nm? '填写的截止日期都已经过了。改一下「起算日」或换成下一轮的截止日。' : '填一个截止日，这里排出每周每月要做的事。')+'</div>'+
+      (res.risks.length? riskHtml(res):'');
+    $('#exportBox').hidden = true; setLive(nm ? '填写的截止日期都已经过了' : ''); updateGobar(); return;
+  }
+  var lastD = res.live[res.live.length-1].D;
+  var h = '<h2 id="outTitle">🗺 完整航程</h2><p class="sub">'+ymd(res.today)+' 起算，'+res.live.length+' 个项目'+
+    (res.live.length>1?'，最后一个 '+ymd(lastD)+' 截止':'')+'</p>';
+  h += riskHtml(res);
+  h += '<div class="gantt-wrap">'+gantt(res)+'</div><p class="swipe">👆 左右滑动看全图</p>';
+  h += '<div class="legend">'+Object.keys(KINDS).map(function(k){return '<span>'+shapeSvg(k,12)+KINDS[k].name+'</span>'}).join('')+'<span>点标记看日期</span></div>';
+  var cu = catchup(res);
+  var thisWeek = monday(res.today);
+  h += '<div class="plan">';
+  if(cu.length){
+    var p1 = cu.filter(function(it){return it.pri===1}), p2 = cu.filter(function(it){return it.pri===2});
+    h += '<div class="bucket catch"><div class="bh"><b>🧯 赶紧做清单</b><small>'+cu.length+' 件已过原定日期，按顺序做</small></div>'+
+      (p1.length?'<p class="pri">先做<span>考试、推荐人、递交，会卡别人或卡截止</span></p>'+p1.map(function(it){return itemHtml(it,true)}).join(''):'')+
+      (p2.length?'<p class="pri">接着做<span>文书和材料，自己能追回来</span></p>'+p2.map(function(it){return itemHtml(it,true)}).join(''):'')+
+      '</div>';
+  }
+  h += buckets(res).map(function(b){
+    var now = b.weekly ? b.key==='w'+thisWeek : b.key==='m'+toDate(res.today).getUTCFullYear()+'-'+toDate(res.today).getUTCMonth();
+    return '<div class="bucket'+(b.weekly?' wk':'')+(now?' now':'')+'"><div class="bh"><b>'+b.label+'</b><small>'+(now?(b.weekly?'本周':'本月')+'，':'')+b.small+'</small></div>'+
+      b.items.map(function(it){ return itemHtml(it,false); }).join('')+'</div>';
+  }).join('')+'</div>';
+  box.innerHTML = h;
+  $('#exportBox').hidden = false;
+  bindTips();
+  var hard = res.risks.filter(function(r){return r.lv!=='info'}).length;
+  setLive('时间线已更新：'+tierOf(res).t+'，'+res.live.length+' 个项目，'+res.items.length+' 个节点'+(cu.length?'，'+cu.length+' 件要赶紧做':'')+(hard?'，'+hard+' 处需要注意':''));
+  updateGobar();
+}
+var liveTmr=null;
+function setLive(t){ clearTimeout(liveTmr); liveTmr=setTimeout(function(){ $('#liveMsg').textContent=t; }, 700); }
+function riskHtml(res){
+  if(!res.risks.length) return '<div class="risks calm"><h3>✅ 暂时没看到冲突</h3></div>';
+  var n = res.risks.filter(function(r){return r.lv!=='info'}).length;
+  var li = function(r){return '<li class="'+r.lv+'">'+esc(r.t)+'</li>'};
+  var SHOW = 4, top = res.risks.slice(0,SHOW), more = res.risks.slice(SHOW);
+  return '<div class="risks"><h3>'+(n? '⚠️ 有 '+n+' 处冲突':'提醒')+'</h3><ul>'+top.map(li).join('')+'</ul>'+
+    (more.length?'<details><summary>还有 '+more.length+' 条，展开</summary><ul>'+more.map(li).join('')+'</ul></details>':'')+'</div>';
+}
+
+/* tooltip for gantt marks */
+function bindTips(){
+  var tip=$('#tip');
+  $$('.mk').forEach(function(g){
+    function show(e){ tip.textContent = g.getAttribute('data-tip'); tip.style.display='block';
+      var r = g.getBoundingClientRect(); var tx = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width/2 - tip.offsetWidth/2));
+      tip.style.left = tx+'px'; tip.style.top = Math.max(8, r.top - tip.offsetHeight - 6)+'px'; }
+    function hide(){ tip.style.display='none'; }
+    g.addEventListener('mouseenter',show); g.addEventListener('mouseleave',hide);
+    g.addEventListener('focus',show); g.addEventListener('blur',hide);
+    g.addEventListener('touchstart',show,{passive:true});
+  });
+}
+window.addEventListener('scroll', function(){ $('#tip').style.display='none'; }, {passive:true});
+
+/* ---------- ICS ---------- */
+function icsEsc(s){ return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function fold(line){
+  var enc = new TextEncoder(), out=[], cur='', curLen=0, limit=75;
+  for(var ch of line){
+    var b = enc.encode(ch).length;
+    if(curLen + b > limit){ out.push(cur); cur=' '; curLen=1; limit=75; }
+    cur += ch; curLen += b;
+  }
+  out.push(cur);
+  return out.join('\r\n');
+}
+function buildIcs(res){
+  var now = new Date(), stamp = now.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  var lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//shenqing-daotui//timeline 1.0//ZH','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:申请倒推时间线'];
+  res.items.forEach(function(it,i){
+    var ds = iso(it.date).replace(/-/g,''), de = iso(it.date+1).replace(/-/g,'');
+    var desc = [it.detail, it.late!==undefined?('原本应在 '+iso(it.late)+' 完成'):'', '由“申请倒推时间线”生成，日期请以学校官网为准。'].filter(Boolean).join('\n');
+    lines.push('BEGIN:VEVENT');
+    lines.push('UID:'+ds+'-'+i+'-'+Math.random().toString(36).slice(2,10)+'@shenqing-daotui.local');
+    lines.push('DTSTAMP:'+stamp);
+    lines.push('DTSTART;VALUE=DATE:'+ds);
+    lines.push('DTEND;VALUE=DATE:'+de);
+    lines.push('SUMMARY:'+icsEsc((it.kind==='deadline'?'【截止】':it.late!==undefined?'【赶紧做】':'')+it.title));
+    lines.push('DESCRIPTION:'+icsEsc(desc));
+    lines.push('CATEGORIES:'+icsEsc(KINDS[it.kind].name));
+    lines.push('TRANSP:TRANSPARENT');
+    if(it.kind==='deadline' || it.kind==='submit'){
+      lines.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(it.title),'TRIGGER:-PT15H','END:VALARM');
+    }
+    lines.push('END:VEVENT');
+  });
+  lines.push('END:VCALENDAR');
+  return lines.map(fold).join('\r\n')+'\r\n';
+}
+
+function download(name, blob){
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+/* copy text from a click handler; falls back to a selectable box when the browser refuses */
+function copyText(text, msgEl, after){
+  function ok(){ msgEl.className='msg'; msgEl.textContent='已复制。'+(after||''); var old=msgEl.parentNode.querySelector('.copybox'); if(old) old.remove(); }
+  function manual(){
+    msgEl.className='msg err'; msgEl.textContent='浏览器不让自动复制。下面的内容已经选中，按 Ctrl+C / ⌘+C，或长按选“拷贝”。';
+    var ta=msgEl.parentNode.querySelector('.copybox');
+    if(!ta){ ta=document.createElement('textarea'); ta.className='copybox'; ta.readOnly=true; ta.setAttribute('aria-label','要复制的内容'); msgEl.parentNode.insertBefore(ta, msgEl.nextSibling); }
+    ta.value=text; ta.focus(); ta.select();
+  }
+  function legacy(){
+    try{ var t=document.createElement('textarea'); t.value=text; t.setAttribute('readonly',''); t.style.cssText='position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(t); t.select(); var r=document.execCommand('copy'); t.remove(); if(r) ok(); else manual(); }
+    catch(e){ manual(); }
+  }
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext!==false){
+      navigator.clipboard.writeText(text).then(ok, legacy);
+    } else legacy();
+  }catch(e){ legacy(); }
+}
+
+/* ---------- PNG card (1080x1440): a boarding pass ---------- */
+var CARD_DISP='"ZCOOL QingKe HuangYou","PingFang SC","Heiti SC","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC","Source Han Sans SC","WenQuanYi Micro Hei",sans-serif';
+var CARD_BODY='"Songti SC","STSong","Noto Serif CJK SC","Noto Serif SC","Source Han Serif SC","SimSun",serif';
+var CARD_BRAND='"ZCOOL KuaiLe",'+CARD_DISP;
+var CARD_TAG='"PingFang SC","Heiti SC","Microsoft YaHei","Noto Sans CJK SC","Noto Sans SC","Source Han Sans SC","WenQuanYi Micro Hei",sans-serif';
+function faceReady(name){
+  if(!document.fonts || !document.fonts.forEach) return false;
+  var ok=false; document.fonts.forEach(function(f){ if(f.family.replace(/["']/g,'')===name && f.status==='loaded') ok=true; }); return ok;
+}
+function cardCanvas(res){
+  var W=1080, H=1440, c=document.createElement('canvas'); c.width=W; c.height=H;
+  var g=c.getContext('2d');
+  var DISP=CARD_DISP, BODY=CARD_BODY, BRAND=CARD_BRAND;
+  var DW = (DISP.indexOf('QingKe')>=0 && faceReady('ZCOOL QingKe HuangYou')) ? '' : 'bold '; // the web face is already heavy; fallbacks need bold
+  var INK='#0F2341', INK2='#34465F', INK3='#53647E', RED='#D3302A', SKY='#62B4F4', LINE='#C9D6E6';
+  function fit(t, maxW){ if(g.measureText(t).width<=maxW) return t; var a=Array.from(t); while(a.length>1 && g.measureText(a.join('')+'…').width>maxW) a.pop(); return a.join('')+'…'; }
+  function txt(t, x, y, maxW){ g.fillText(fit(t, maxW), x, y); }
+  function rtxt(t, xr, y, maxW){ var s=fit(t,maxW); g.fillText(s, xr-g.measureText(s).width, y); }
+  /* font size that makes t fit maxW, between lo and hi */
+  function sizeFor(t, weight, fam, hi, lo, maxW){ for(var s=hi; s>lo; s-=4){ g.font=weight+s+'px '+fam; if(g.measureText(t).width<=maxW) return s; } return lo; }
+  g.textBaseline='alphabetic';
+  if('letterSpacing' in g) g.letterSpacing='0px';
+  g.fillStyle=SKY; g.fillRect(0,0,W,H);
+  var PX=56, PW=W-112, PT=48, PB=H-56;
+  g.fillStyle='#3C8FD6'; roundRect(g, PX, PT+14, PW, PB-PT, 36); g.fill();
+  g.fillStyle='#FCFDFE'; roundRect(g, PX, PT, PW, PB-PT, 36); g.fill();
+  // band
+  g.save(); roundRect(g, PX, PT, PW, PB-PT, 36); g.clip();
+  g.fillStyle=INK; g.fillRect(PX, PT, PW, 88); g.restore();
+  var X=PX+56, R=PX+PW-56;
+  g.fillStyle='#fff'; g.font='40px '+BRAND; g.fillText('死线航空', X, PT+59);
+  g.font='28px '+BODY; var bt='申请登机牌  '+ymd(res.today); rtxt(bt, R, PT+56, 520);
+  if(isSample()){ var bw=Math.min(g.measureText(bt).width,520); g.font='bold 24px '+CARD_TAG; var sl='示例数据', sw=g.measureText(sl).width;
+    var sx=R-bw-24-sw-24; g.fillStyle='#FFC23D'; roundRect(g, sx, PT+24, sw+24, 40, 8); g.fill(); g.fillStyle=INK; g.fillText(sl, sx+12, PT+53); }
+  // route: today ✈ first deadline
+  var T=res.today, p0=res.live[0], f=p0.D-T, tr=tierOf(res);
+  var y=PT+132;
+  g.fillStyle=INK3; g.font='26px '+BODY; g.fillText('出发', X, y); rtxt('截止', R, y, 200);
+  g.fillStyle=INK; g.font=DW+'52px '+DISP; g.fillText(md(T), X, y+56);
+  var fromW=g.measureText(md(T)).width, toW=Math.min(g.measureText(md(p0.D)).width, 300); rtxt(md(p0.D), R, y+56, 300);
+  var a1=X+fromW+30, a2=R-toW-30;
+  if(a2-a1>80){ g.strokeStyle=LINE; g.lineWidth=4; g.setLineDash([4,12]); g.beginPath(); g.moveTo(a1,y+38); g.lineTo(a2,y+38); g.stroke(); g.setLineDash([]);
+    g.fillStyle='#FCFDFE'; g.fillRect((a1+a2)/2-34, y+8, 68, 60); g.fillStyle=INK; g.font='46px '+DISP; var pl='✈'; g.fillText(pl, (a1+a2)/2-g.measureText(pl).width/2, y+54); }
+  g.fillStyle=INK3; g.font='24px '+BODY; rtxt(p0.label, R, y+92, 560);
+  // 称号 + line
+  y=PT+344;
+  var ts=sizeFor(tr.t, DW, DISP, 124, 72, R-X);
+  g.font=DW+ts+'px '+DISP; g.fillStyle = tr.i>=3 ? RED : INK; txt(tr.t, X, y, R-X);
+  y+=58; g.fillStyle=INK2; g.font='36px '+BODY; txt(tr.l, X, y, R-X);
+  // perforation with notches
+  y+=44;
+  g.strokeStyle=LINE; g.lineWidth=4; g.setLineDash([14,12]); g.beginPath(); g.moveTo(PX+40,y); g.lineTo(PX+PW-40,y); g.stroke(); g.setLineDash([]);
+  g.fillStyle=SKY; g.beginPath(); g.arc(PX,y,26,0,Math.PI*2); g.fill(); g.beginPath(); g.arc(PX+PW,y,26,0,Math.PI*2); g.fill();
+  // days to first deadline + counts
+  g.fillStyle=INK3; g.font='28px '+BODY; g.fillText('距截止', X, y+48);
+  var num = f===0 ? '今天' : f===1 ? '明天' : String(f);
+  g.fillStyle = tr.i>=3 ? RED : INK; g.font=DW+'112px '+DISP; g.fillText(num, X, y+146);
+  var nw=g.measureText(num).width;
+  if(f>1){ g.font=DW+'48px '+DISP; g.fillText('天', X+nw+12, y+146); }
+  g.font='30px '+BODY;
+  g.fillStyle = tr.o ? RED : INK2; rtxt('赶紧做 '+tr.o+' 件', R, y+90, 300);
+  g.fillStyle = tr.c ? RED : INK2; rtxt('冲突 '+tr.c+' 处', R, y+138, 300);
+  // next three actions (one line each when the strip needs the room)
+  y+=212;
+  var rows=res.live.slice(0,8), lines = rows.length>4 ? 1 : 2;
+  var acts=nextActions(res,3);
+  g.fillStyle=INK; g.font=DW+'40px '+DISP; g.fillText('接下来先做这 '+acts.length+' 件事', X, y);
+  y+=14;
+  acts.forEach(function(it){
+    var top=y;
+    g.fillStyle = it.late!==undefined ? RED : INK; roundRect(g, X, top+8, 124, 44, 10); g.fill();
+    g.fillStyle='#fff'; g.font = it.late!==undefined ? 'bold 28px '+CARD_TAG : DW+'28px '+DISP; var w=whenShort(it,T); var ww=Math.min(g.measureText(w).width,112); txt(w, X+62-ww/2, top+40, 112);
+    var tx=X+148, tw=R-tx;
+    g.font='32px '+BODY;
+    var yy = wrap(g, it.title, tx, top+41, tw, 40, lines, INK); // returns the next baseline
+    y = Math.max(yy-40+20, top+56)+6;
+  });
+  var cu=catchup(res).length;
+  if(cu>3){ g.font='25px '+BODY; g.fillStyle=RED; txt('赶紧做清单里还有 '+(cu-3)+' 件，按网页上的顺序做', X+148, y+22, R-X-148); y+=36; }
+  // deadline strip
+  y+=22;
+  var labW=320, dateW=116, gl=X+labW+dateW+20, gr=R-14;
+  var NOTE=PB-34, avail=NOTE-64-(y+56);
+  var rowH=Math.max(28, Math.min(64, Math.floor(avail/rows.length)));
+  var gh=rows.length*rowH;
+  y = Math.max(y, NOTE-64-56-gh); // short plans: the strip sits at the foot of the pass
+  g.strokeStyle=LINE; g.lineWidth=2; g.beginPath(); g.moveTo(X,y); g.lineTo(R,y); g.stroke();
+  var top=y+56;
+  var end=res.live[res.live.length-1].D+10;
+  var x=function(d){ return gl + (d-T)/Math.max(1,end-T)*(gr-gl); };
+  var d0=toDate(T), yy2=d0.getUTCFullYear(), mm=d0.getUTCMonth()+1;
+  g.font='22px '+BODY;
+  var step=Math.max(1, Math.ceil(80/(30.4*(gr-gl)/Math.max(1,end-T)))), lastLab=-1e9, lastLabW=0, labYear=yy2;
+  for(var i=0;i<30;i++){ if(mm>11){mm=0;yy2++;} var m1=Math.round(Date.UTC(yy2,mm,1)/DAY); mm++; if(m1>end) break;
+    var xx=x(m1); g.strokeStyle='#E1E9F2'; g.lineWidth=2; g.beginPath(); g.moveTo(xx,top-12); g.lineTo(xx,top+gh); g.stroke();
+    var mo=toDate(m1).getUTCMonth()+1;
+    var yr=toDate(m1).getUTCFullYear(), lab=(yr!==labYear? (yr%100)+'年':'')+mo+'月';
+    if(i%step===0 && xx-lastLab>=Math.max(56,lastLabW+14) && xx+5+g.measureText(lab).width<R+20){ g.fillStyle=INK3; g.fillText(lab, xx+5, top-18); lastLab=xx; lastLabW=g.measureText(lab).width; labYear=yr; } }
+  g.fillStyle='#FFC23D'; g.fillRect(x(T)-3, top-12, 6, gh+12);
+  var lf = rowH>=46 ? 26 : rowH>=36 ? 23 : 20;
+  rows.forEach(function(p,ri){
+    var cy=top+ri*rowH+rowH/2;
+    g.font=lf+'px '+BODY; g.fillStyle=INK; txt(p.label, X, cy+lf*0.36, labW-12);
+    g.fillStyle=RED; txt(md(p.D), X+labW, cy+lf*0.36, dateW);
+    var its=res.items.filter(function(it){return it.prog && it.prog.id===p.id});
+    var f1 = its.length?its[0].date:p.D;
+    g.fillStyle='#E3EEF9'; roundRect(g, x(f1), cy-5, Math.max(4,x(p.D)-x(f1)), 10, 5); g.fill();
+    var mr = rowH>=40 ? 8 : 6;
+    its.forEach(function(it){ var cx=x(it.date), col=KINDS[it.kind].color;
+      if(it.kind==='deadline'){ g.fillStyle=RED; g.beginPath(); g.moveTo(cx,cy-mr-4); g.lineTo(cx+mr+4,cy); g.lineTo(cx,cy+mr+4); g.lineTo(cx-mr-4,cy); g.closePath(); g.fill(); }
+      else { g.fillStyle=col; g.strokeStyle='#FCFDFE'; g.lineWidth=3; g.beginPath(); g.arc(cx,cy,mr,0,Math.PI*2); g.fill(); g.stroke(); }
+    });
+  });
+  // legend, then one note line
+  var ly=Math.min(top+gh+30, NOTE-38), lx=X; g.font='21px '+BODY;
+  ['test','rec','write','extra','submit'].forEach(function(k){ var nmw=g.measureText(KINDS[k].name).width; if(lx+24+nmw>R) return; g.fillStyle=KINDS[k].color; g.beginPath(); g.arc(lx+7,ly-7,7,0,Math.PI*2); g.fill(); g.fillStyle=INK2; g.fillText(KINDS[k].name, lx+20, ly); lx+=40+nmw; });
+  if(lx+100<R){ g.fillStyle=RED; g.beginPath(); g.moveTo(lx+8,ly-17); g.lineTo(lx+18,ly-7); g.lineTo(lx+8,ly+3); g.lineTo(lx-2,ly-7); g.closePath(); g.fill(); g.fillStyle=INK2; g.fillText('截止日', lx+26, ly); }
+  g.font='23px '+BODY; g.fillStyle = tr.c ? RED : INK3;
+  txt((res.live.length>8?'另有 '+(res.live.length-8)+' 个项目未画出。':'')+(tr.c?'还有 '+tr.c+' 处冲突要处理，':'')+'日期以学校官网为准', X, ly+38, R-X);
+  return c;
+}
+function roundRect(g,x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); }
+function wrap(g, text, x, y, maxW, lh, maxLines, color){
+  g.fillStyle=color||'#1B2540'; var line='', n=0;
+  for(var ch of text){
+    if(g.measureText(line+ch).width>maxW){
+      n++;
+      if(n>=maxLines){ var a=Array.from(line); while(a.length>1 && g.measureText(a.join('')+'…').width>maxW) a.pop(); g.fillText(a.join('')+'…', x, y); return y+lh; }
+      g.fillText(line, x, y); y+=lh; line=ch;
+    } else line+=ch;
+  }
+  if(line){ g.fillText(line, x, y); y+=lh; }
+  return y;
+}
+
+/* ---------- events ---------- */
+$('#progs').addEventListener('input', onProgInput);
+$('#progs').addEventListener('change', onProgInput);
+function onProgInput(e){
+  var el=e.target, f=el.getAttribute('data-f'); if(!f) return;
+  var id=+el.closest('.prog').getAttribute('data-id');
+  var p=state.progs.filter(function(q){return q.id===id})[0]; if(!p) return;
+  if(el.type==='checkbox') p[f]=el.checked;
+  else if(f==='recs'){ p[f]=Math.max(0,Math.min(5,parseInt(el.value,10)||0)); if(e.type==='change' && String(p[f])!==el.value) el.value=p[f]; }
+  else p[f]=el.value;
+  if(f==='name') p.sample=false; // edited name: no longer sample data
+  schedule();
+}
+$('#progs').addEventListener('click', function(e){
+  var id=e.target.getAttribute('data-rm'); if(!id) return;
+  var idx=state.progs.map(function(p){return p.id}).indexOf(+id);
+  state.progs=state.progs.filter(function(p){return p.id!==+id}); renderProgs(); render();
+  var cards=$$('.prog'), to=cards[Math.max(0,idx-1)];
+  (to ? $('input[data-f=name]', to) : $('#addProg')).focus();
+});
+$('#addProg').addEventListener('click', function(){
+  if(state.progs.length>=8) return;
+  state.progs.push(newProg()); renderProgs(); render();
+  var last=$$('.prog').pop(); var inp=$('input[data-f=name]', last); inp.focus({preventScroll:true});
+  last.scrollIntoView({block:'nearest',behavior:reduceMotion()?'auto':'smooth'});
+});
+function reduceMotion(){ return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; }
+$('#loadSample').addEventListener('click', function(){
+  var T=readStatus().today;
+  state.progs=[
+    newProg({sample:true, name:'美国 公共政策硕士', dest:'美国', deadline:iso(T+24), lang:true, test:'gre', recs:3}),
+    newProg({sample:true, name:'港校 社科硕士', dest:'香港', deadline:iso(T+55), round:'第二轮', lang:true, recs:2}),
+    newProg({sample:true, name:'新加坡 商科硕士', dest:'新加坡', deadline:iso(T+70), lang:true, test:'gmat', recs:2, interview:true}),
+    newProg({sample:true, name:'英国 传媒硕士', dest:'英国', deadline:iso(T+98), round:'第三轮', lang:true, recs:2, portfolio:true})
+  ];
+  renderProgs(); render();
+  var pf=$('.panel.form'); var pr=$('#progs'); if(pf.scrollHeight>pf.clientHeight) pf.scrollTop = pr.offsetTop - 60;
+});
+$('#hero').addEventListener('click', function(e){
+  if(!e.target.closest('#startBtn')) return;
+  var d=$('input[data-f=deadline]'); d.scrollIntoView({block:'center',behavior:reduceMotion()?'auto':'smooth'}); d.focus({preventScroll:true});
+  try{ if(d.showPicker) d.showPicker(); }catch(err){}
+});
+['#today','#recsConfirmed'].forEach(function(s){ $(s).addEventListener('input', schedule); });
+$('#recsConfirmed').addEventListener('change', function(e){ var v=Math.max(0,Math.min(6,parseInt(e.target.value,10)||0)); e.target.value=v; schedule(); });
+$$('input[name=langType],input[name=langStatus],input[name=greStatus]').forEach(function(r){ r.addEventListener('change', schedule); });
+function leadVal(v){ v=parseInt(v,10); return isNaN(v) ? null : Math.max(0, Math.min(365, v)); }
+$('#leadTable').addEventListener('input', function(e){
+  var k=e.target.getAttribute('data-lead'); if(!k) return;
+  var v=leadVal(e.target.value); if(v===null) return; // blank while typing: keep the last value
+  L[k]=v; schedule();
+});
+$('#leadTable').addEventListener('change', function(e){
+  var k=e.target.getAttribute('data-lead'); if(!k) return;
+  var v=leadVal(e.target.value);
+  if(v===null){ v=L[k]; } // left blank: show the value still in use
+  L[k]=v; if(e.target.value!==String(v)) e.target.value=v; schedule();
+});
+var tmr=null; function schedule(){ clearTimeout(tmr); tmr=setTimeout(render, 120); }
+
+/* exports */
+function clearPreview(){ var pv=$('#preview'); if(pv) pv.innerHTML=''; var b=$('#mkPng'); if(b) b.textContent='📸 生成登机牌图'; }
+var cardGen=0;
+function cardText(){ return ($('#hero').textContent||'')+($('#result').textContent||'').slice(0,6000)+'0123456789年月日天件处出发截止距赶紧做冲突接下来先做这事今天明天另有个项目未画出还要处理日期以学校官网为准申请登机牌考试推荐信文书和材料作品集面试递交截止日'; }
+function showCard(){
+  var url; try{ url=cardCanvas(lastRes).toDataURL('image/png'); }catch(e){ $('#preview').innerHTML='<p class="msg err">图片没生成出来，请刷新页面再试。</p>'; return null; }
+  var tr=tierOf(lastRes), alt='死线航空登机牌：'+tr.t+'，距截止 '+tr.f+' 天，接下来先做的 3 件事和各项目截止日';
+  var img=$('#preview img');
+  if(img){ img.src=url; img.alt=alt; var a=$('#preview a'); if(a) a.href=url; return img; }
+  $('#preview').innerHTML='<p>📱 长按图片存到相册　💻 右键图片另存为</p>'+
+    '<img alt="'+esc(alt)+'" src="'+url+'">'+
+    '<p><a href="'+url+'" download="死线航空_登机牌.png">也可以直接下载图片</a></p>';
+  return $('#preview img');
+}
+$('#mkPng').addEventListener('click', function(){
+  if(!lastRes||!lastRes.live.length) return;
+  var my=++cardGen;
+  var img=showCard(); if(!img) return;
+  $('#mkPng').textContent='📸 重新生成';
+  if(img.scrollIntoView) img.scrollIntoView({block:'nearest',behavior:reduceMotion()?'auto':'smooth'});
+  // web fonts load lazily per glyph range: fetch the ones the card needs, then redraw once (2.5 s cap)
+  if(document.fonts && document.fonts.load){
+    var txt=cardText();
+    var wait=Promise.all([document.fonts.load('40px "ZCOOL QingKe HuangYou"',txt), document.fonts.load('40px "ZCOOL KuaiLe"','死线航空')]);
+    Promise.race([wait, new Promise(function(r){ setTimeout(r,2500); })]).then(function(){ if(my===cardGen && $('#preview img')) showCard(); }, function(){});
+  }
+});
+$('#dlIcs').addEventListener('click', function(){
+  if(!lastRes||!lastRes.live.length) return;
+  download('申请时间线.ics', new Blob([buildIcs(lastRes)], {type:'text/calendar;charset=utf-8'}));
+  var m=$('#icsMsg'); m.className='msg'; m.textContent='没看到文件的话，点「📋 复制」。';
+});
+$('#copyIcs').addEventListener('click', function(){
+  if(!lastRes||!lastRes.live.length) return;
+  copyText(buildIcs(lastRes), $('#icsMsg'), '粘贴进文本编辑器，存成“申请时间线.ics”，再用日历打开。');
+});
+function exportData(){
+  var st=readStatus();
+  return JSON.stringify({v:1, status:{today:iso(st.today), langType:st.langType, langStatus:st.langStatus, greStatus:st.greStatus, recsConfirmed:st.recsConfirmed}, leads:L,
+    progs:state.progs.map(function(p){ var o=Object.assign({},p); delete o.id; if(!o.sample) delete o.sample; return o; })}, null, 2);
+}
+function fileMsg(t, err){ var m=$('#fileMsg'); m.className='msg'+(err?' err':''); m.textContent=t; }
+$('#saveJson').addEventListener('click', function(){
+  download('申请时间线方案.json', new Blob([exportData()], {type:'application/json'}));
+  fileMsg('文件名“申请时间线方案.json”。没看到文件的话，点「📋 复制」。');
+});
+$('#copyJson').addEventListener('click', function(){ copyText(exportData(), $('#fileMsg'), '下次打开，展开「粘贴导入」，粘贴后点读取。'); });
+$('#pickJson').addEventListener('click', function(){ $('#loadJson').click(); });
+
+/* import: accept only known fields with sane types */
+function str(v, max){ return typeof v==='string' ? v.slice(0,max) : ''; }
+function bool(v, dflt){ return typeof v==='boolean' ? v : dflt; }
+function cleanProg(o){
+  o = (o && typeof o==='object') ? o : {};
+  return newProg({ sample:o.sample===true, name:str(o.name,40), dest: DESTS.indexOf(o.dest)>=0 ? o.dest : '其他',
+    deadline: (typeof o.deadline==='string' && parseD(o.deadline)!==null) ? o.deadline : '', round:str(o.round,12),
+    lang:bool(o.lang,true), test: ['none','gre','gmat'].indexOf(o.test)>=0 ? o.test : 'none',
+    recs: Math.max(0, Math.min(5, parseInt(o.recs,10)||0)),
+    ps:bool(o.ps,true), cv:bool(o.cv,true), portfolio:bool(o.portfolio,false), interview:bool(o.interview,false) });
+}
+function importText(text){
+  var d;
+  try{ d=JSON.parse(text); }catch(err){ fileMsg('读不出来：这不是方案文件的内容。请用本页「💾 存文件」或「📋 复制」得到的内容。', true); return false; }
+  if(!d || typeof d!=='object' || !Array.isArray(d.progs)){ fileMsg('读不出来：内容里没有项目列表。请用本页面保存的方案。', true); return false; }
+  var cut = d.progs.length>8;
+  state.progs = d.progs.slice(0,8).map(cleanProg);
+  if(!state.progs.length) state.progs=[newProg()];
+  if(d.leads && typeof d.leads==='object') Object.keys(L).forEach(function(k){ var v=leadVal(d.leads[k]); if(typeof d.leads[k]==='number' && v!==null) L[k]=v; });
+  var s=(d.status && typeof d.status==='object') ? d.status : {};
+  $('#today').value = (typeof s.today==='string' && parseD(s.today)!==null) ? s.today : iso(localToday());
+  ['langType','langStatus','greStatus'].forEach(function(n){ var ok=['ielts_cd','ielts_paper','toefl','none','retake','done'].indexOf(s[n])>=0; var el=ok && $('input[name='+n+'][value="'+s[n]+'"]'); if(el) el.checked=true; });
+  if(typeof s.recsConfirmed==='number') $('#recsConfirmed').value=Math.max(0,Math.min(6,Math.round(s.recsConfirmed)));
+  renderProgs(); renderLeads(); render();
+  fileMsg('已导入 '+state.progs.length+' 个项目。'+(cut?'文件里超过 8 个，只导入了前 8 个。':''));
+  return true;
+}
+$('#loadJson').addEventListener('change', function(e){
+  var f=e.target.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){ importText(String(r.result)); e.target.value=''; };
+  r.onerror=function(){ fileMsg('文件打不开，请重新选择。', true); e.target.value=''; };
+  r.readAsText(f);
+});
+$('#readPaste').addEventListener('click', function(){
+  var t=$('#pasteJson').value.trim(); if(!t){ fileMsg('先把方案内容粘贴进上面的框。', true); return; }
+  if(importText(t)) $('#pasteJson').value='';
+});
+
+/* reset: second click within 4 s confirms (confirm() is blocked in some embeds) */
+var resetArmed=null;
+$('#resetAll').addEventListener('click', function(){
+  var b=this;
+  if(!resetArmed){ b.textContent='再点一次，清空全部内容'; resetArmed=setTimeout(function(){ resetArmed=null; b.textContent='重置'; }, 4000); return; }
+  clearTimeout(resetArmed); resetArmed=null; b.textContent='重置';
+  LEADS.forEach(function(x){ L[x.k]=x.days; });
+  state.progs=[newProg()];
+  $('#today').value=iso(localToday());
+  ['langType','langStatus','greStatus'].forEach(function(n){ $$('input[name='+n+']')[0].checked=true; });
+  $('#recsConfirmed').value=1;
+  renderLeads(); renderProgs(); render();
+  fileMsg('已重置，所有内容恢复到初始状态。');
+  $('input[data-f=name]').focus();
+});
+
+/* mobile: a bar that jumps to the full itinerary while it is off screen */
+var outVisible=false;
+function updateGobar(){
+  var on = !!(lastRes && lastRes.live.length) && !outVisible;
+  $('#gobar').classList.toggle('on', on);
+  if(lastRes && lastRes.live.length) $('#gobarLink').textContent='🗺 看完整航程（'+lastRes.items.length+' 项）';
+}
+function typingIn(t){ return !!(t && t.matches && t.matches('input:not([type=checkbox]):not([type=radio]),textarea,select')); }
+document.addEventListener('focusin', function(e){ if(typingIn(e.target)) $('#gobar').classList.add('typing'); });
+/* come back a moment later, so a tap that moved focus lands on what was under the finger, not on the bar */
+document.addEventListener('focusout', function(){ setTimeout(function(){ if(!typingIn(document.activeElement)) $('#gobar').classList.remove('typing'); },300); });
+if('IntersectionObserver' in window){
+  new IntersectionObserver(function(es){ outVisible = es[0].isIntersecting; updateGobar(); }, {rootMargin:'0px 0px -40% 0px'}).observe($('#out'));
+}
+
+/* init */
+$('#today').value = iso(localToday());
+if(window.matchMedia && matchMedia('(min-width:900px)').matches) $('#leadBox').open = true;
+renderLeads(); renderSources(); renderProgs(); render();
+window.__tl = {plan:function(){return plan(readStatus())}, buildIcs:function(){return buildIcs(lastRes)}, buckets:function(){return buckets(lastRes)},
+  next:function(){return nextActions(lastRes,3).map(function(it){return it.title})}, catchup:function(){return catchup(lastRes).map(function(it){return it.pri+' '+it.title})},
+  card:function(){return cardCanvas(lastRes).toDataURL('image/png')}, exportData:exportData, importText:importText,
+  tier:function(){ return lastRes && lastRes.live.length ? tierOf(lastRes) : null; }, tiers:TIERS,
+  tierFor:function(progs, st){ var r=window.__tl.planFor(progs, st); return r.live.length ? {tier:tierOf(r), o:r.items.filter(function(i){return i.late!==undefined}).length, c:r.risks.filter(function(x){return x.lv!=='info'}).length, f:r.live[0].D-r.today} : null; },
+  setCardFonts:function(disp,body){ CARD_DISP=disp; CARD_BODY=body; CARD_BRAND=disp; },
+  planFor:function(progs, st){ var keep=state.progs; state.progs=progs.map(newProg); try{ var r=plan(Object.assign(readStatus(), st||{})); r.ics=buildIcs(r); return r; } finally { state.progs=keep; } },
+  leads:L};
+})();
+</script>
+</body>
+</html>
